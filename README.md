@@ -18,7 +18,7 @@ to `-p your_port_here:3080`.
 To check it's working, do `curl -H 'Host: www.google.com'
 http://127.0.0.1:3080/` - you should get some HTML back.
 
-## Network Setup
+## Network Setup
 
 To set this up locally, I added a second router to my network running OpenWRT.
 The WAN port of the router was connect to the LAN with the proxy running, and
