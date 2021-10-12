@@ -12,4 +12,4 @@ RUN gem install bundler \
  && chown -R the-insecure-proxy .
 
 USER the-insecure-proxy
-CMD [ "bundle", "exec", "puma", "-p", "3080" ]
+CMD [ "bundle", "exec", "puma", "-v", "-p", "5000" ]

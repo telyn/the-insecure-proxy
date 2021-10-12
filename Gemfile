@@ -12,3 +12,5 @@ gem "rspec", "~> 3.0"
 gem "rubocop", "~> 1.7"
 
 gem "puma", "~> 5.5"
+
+gem "guard-rspec", "~> 4.7"
