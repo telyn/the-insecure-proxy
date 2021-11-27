@@ -1,4 +1,4 @@
-# The Insecure Proxy
+# The Insecure Proxy (Rust Rewrite)
 
 This is a forward-proxy server that expects to run as a man-in-the-middle, i.e.
 not as a configured HTTP Proxy in your web browser.
@@ -53,3 +53,11 @@ being accessed.
 
 The second rule is the one which rewrites all TCP traffic bound for any other IP
 to be bound for the proxy server.
+
+# Never-before Asked Questions
+
+## Why the rust rewrite?
+
+* I want to learn rust
+* The ruby version slurped up as much ram as the largest file you downloaded and
+  never seems to let go.
