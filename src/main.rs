@@ -1,15 +1,11 @@
-mod https_url_rewriter;
+mod the_insecure_proxy;
 
-use https_url_rewriter::url_rewriter;
+use the_insecure_proxy::{the_insecure_proxy};
 
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use hyper::{Body, Request, Response, Server};
+use hyper::{Server};
 use hyper::service::{make_service_fn, service_fn};
-
-async fn hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    Ok(Response::new("Hello, World".into()))
-}
 
 async fn shutdown_signal() {
     tokio::signal::ctrl_c()
@@ -22,7 +18,7 @@ async fn main() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3080));
 
     let make_svc = make_service_fn(|_conn| async {
-        Ok::<_, Infallible>(service_fn(hello_world))
+        Ok::<_, Infallible>(service_fn(the_insecure_proxy))
     });
 
     let server = Server::bind(&addr).serve(make_svc)
