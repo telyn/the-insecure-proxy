@@ -42,7 +42,7 @@ impl HttpsUrlRewriter {
         }
     }
 
-    fn move_output(&mut self) -> String {
+    pub fn move_output(&mut self) -> String {
         std::mem::replace(&mut self.output_buffer, String::with_capacity(1024))
     }
 
