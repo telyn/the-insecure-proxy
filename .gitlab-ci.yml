@@ -8,6 +8,12 @@ test:
   script:
     - cargo fetch
     - cargo test
+  variables:
+    CARGO_HOME: $CI_PROJECT_DIR/.cargo
+  cache:
+    paths:
+      - target
+      - .cargo
 
 build-image:
   stage: build
