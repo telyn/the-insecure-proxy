@@ -119,15 +119,16 @@ mod tests {
     #[test]
     fn httpsify_replaces_uri_scheme() {
 
+        let mut req = Request::builder()
+            .uri("http://example.com")
+            .header("Host", "example.com")
+            .body("hello".into())
+            .unwrap();
         let mut proxy = TheInsecureProxy {
-            req: Request::builder()
-                .uri("http://example.com")
-                .body("hello".into())
-                .unwrap(),
             client: make_client(),
-            rewritten_mimes: &[]
+            rewritten_mimes: vec![]
         };
-        proxy.httpsify();
-        assert_eq!(proxy.req.uri(), "https://example.com");
+        req = proxy.httpsify(req).unwrap();
+        assert_eq!(req.uri(), "https://example.com");
     }
 }
