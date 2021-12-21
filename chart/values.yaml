@@ -1,0 +1,6 @@
+applicationName: the-insecure-proxy
+image: telyn/the-insecure-proxy:latest
+imagePullPolicy: Always
+imagePullSecret: ""
+priorityClassName: ""
+externalPort: 3080

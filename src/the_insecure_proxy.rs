@@ -23,13 +23,12 @@ pub async fn the_insecure_proxy<'a>(req: Request<Body>) -> Result<Response<Body>
         rewritten_mimes: Vec::from(DEFAULT_REWRITTEN_MIMES)
     };
 
-    println!("Proxying request for {}", req.uri());
-    proxy.proxy_request(req).await.map_err(|err| {
-        println!("{}", err);
+    println!("{} {}", req.method(), req.uri());
+    let res = proxy.proxy_request(req).await.map_err(|err| {
+        println!("  ERR {}", err);
         return ProxyError::new("meh");
-    })
-
-
+    });
+    res
 }
 
 fn make_client() -> Client<HttpsConnector<HttpConnector>, hyper::Body> {
@@ -49,6 +48,9 @@ impl<'a> TheInsecureProxy<'a> {
     pub async fn proxy_request(mut self, req: Request<Body>) -> Result<Response<Body>, Box<dyn std::error::Error>> {
         let req = self.httpsify(req)?;
 
+        self.log_headers('>', &req.headers());
+        let req_uri = req.uri().clone();
+        let req_method = req.method().clone();
         let resp = self.client.request(req).await?;
 
         let (mut resp_parts, mut resp_body) = resp.into_parts();
@@ -64,16 +66,24 @@ impl<'a> TheInsecureProxy<'a> {
                                           .unwrap());
         }
         if let Some(content_type) = resp_parts.headers.get("Content-Type") {
-            if self.should_rewrite(content_type.to_str().unwrap()) {
-                println!("Should rewrite!");
-                let (new_resp_body, len) = self.rewrite_body(resp_body).await.expect("Oh dear");
-                resp_body = new_resp_body;
+            let content_type = content_type.to_str().unwrap();
+            println!("= Received content type is {}", content_type);
+            if self.should_rewrite(content_type) {
+                println!("= Should rewrite!");
+                let new_body_str = self.rewrite_body(resp_body).await.expect("Oh dear");
+
                 resp_parts
                     .headers
                     .insert("Content-Length",
-                            HeaderValue::from_str(&len.to_string()).unwrap());
+                            HeaderValue::from_str(&new_body_str.len().to_string()).unwrap());
+                self.log_headers('<', &resp_parts.headers);
+                println!("< {}", new_body_str.replace("\n", "\n< "));
+                resp_body = Body::from(new_body_str);
+            } else {
+                println!("= not rewriting");
             }
         }
+        println!("= Completed {} response to {} {}", resp_parts.status, req_method, req_uri);
         Ok(Response::from_parts(resp_parts, resp_body))
     }
 
@@ -88,14 +98,20 @@ impl<'a> TheInsecureProxy<'a> {
         })
     }
 
-    async fn rewrite_body(&self, resp_body: Body) -> Result<(Body, usize), Box<dyn std::error::Error>> {
+    fn log_headers(&self, prefix: char, headers: &hyper::header::HeaderMap) {
+        for (key, value) in headers.iter() {
+            println!("{} {:?}: {:?}", prefix, key, value);
+        }
+        println!("< ");
+    }
+
+    async fn rewrite_body(&self, resp_body: Body) -> Result<String, Box<dyn std::error::Error>> {
         let bytes = hyper::body::to_bytes(resp_body).await?;
         let mut rewriter = crate::https_url_rewriter::url_rewriter();
         let body_string = std::str::from_utf8(bytes.as_ref())?;
         rewriter.consume_str(&body_string);
         let body_str = rewriter.move_output();
-        let len = body_str.len();
-        Ok( (Body::from(body_str), len) )
+        Ok(body_str)
     }
 
     fn httpsify(&mut self, req: Request<Body>) -> Result<Request<Body>, Box<dyn std::error::Error>> {

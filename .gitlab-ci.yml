@@ -1,6 +1,10 @@
+variables:
+  APP_NAME: the-insecure-proxy
+
 stages:
   - test
   - build
+  - deploy
 
 test:
   stage: test
@@ -23,4 +27,24 @@ build-image:
   script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor --use-new-run -v debug --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"
+    - if [ "${CI_COMMIT_BRANCH}" = "main" ]; then DESTINATION_LATEST=' --destination '"${CI_REGISTRY_IMAGE}:latest" ; fi
+    - echo /kaniko/executor --use-new-run -v debug --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"${DESTINATION_LATEST}
+    - /kaniko/executor --use-new-run -v debug --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"${DESTINATION_LATEST}
+
+deploy:
+  stage: deploy
+  image: alpine/helm:3.7.2
+  script:
+    - >-
+      helm upgrade "${APP_NAME}" ./chart --install --atomic \
+           --values=./chart/values.yaml \
+           --namespace "${KUBE_NAMESPACE}" \
+           --set "applicationName=${APP_NAME}" \
+           --set "image=${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}" \
+           --set "imagePullSecret=image-pull-secret-${APP_NAME}" \
+           --set "priorityClassName=fun-stuff"
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+      when: always

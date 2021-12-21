@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: the-insecure-proxy
+version: 0.1.0
+# kubeVersion: # figure it out later
+description: HTTPS->HTTP downgrading proxy
+home: https://git.telynz.uk/telyn/the-insecure-proxy
