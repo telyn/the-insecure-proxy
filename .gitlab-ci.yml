@@ -2,25 +2,29 @@ variables:
   APP_NAME: the-insecure-proxy
 
 stages:
-  - test
   - build
+  - build-image
   - deploy
 
-test:
-  stage: test
+build:
+  stage: build
   image: rust:1.56
   script:
     - cargo fetch
-    - cargo test
+    - cargo test --all-targets
+    - cargo build --release
   variables:
     CARGO_HOME: $CI_PROJECT_DIR/.cargo
+  artifacts:
+    paths:
+      - target/release/the-insecure-proxy
   cache:
     paths:
       - target
       - .cargo
 
 build-image:
-  stage: build
+  stage: build-image
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
