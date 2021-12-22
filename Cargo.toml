@@ -10,6 +10,7 @@ test = false
 bench = false
 
 [dependencies]
+bytes = { version = "1" }
 hyper = { version = "0.14", features = ["http1", "client", "server", "runtime"] }
 tokio = { version = "1", features = ["full"] }
 hyper-tls = { version = "0.5" }

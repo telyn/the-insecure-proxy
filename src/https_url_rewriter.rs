@@ -1,4 +1,4 @@
-use std::str;
+use bytes::{Bytes, BytesMut, Buf, BufMut};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum State {
@@ -12,78 +12,75 @@ enum State {
     HaveHTTPSCS //s for slash innit
 }
 
-
 // rewrites any https:// into http:// in received chunks - even where it
 // spreads across chunk boundaries
 pub struct HttpsUrlRewriter {
-    output_buffer: String,
-    buffer: String,
+    output_buffer: BytesMut,
+    buffer: BytesMut,
     state: State
 }
 
 pub fn url_rewriter() -> HttpsUrlRewriter {
     return HttpsUrlRewriter {
-        output_buffer: String::with_capacity(1024),
-        buffer: String::with_capacity(16),
+        output_buffer: BytesMut::with_capacity(1024),
+        buffer: BytesMut::with_capacity(16),
         state: State::NotInScheme
     };
 }
 
 impl HttpsUrlRewriter {
-    // pub fn read_chunk(&mut self, chunk: hyper::Chunk) {
-    //     let chunk_str = String::from_utf8(chunk)
-    //         .expect("chunk received was not valid utf-8");
-    //     self.consume_string(&chunk_str);
-    // }
-
-    pub fn consume_str(&mut self, string: &str) {
-        for chr in string.chars() {
-            self.consume(chr);
+    pub fn consume_str(&mut self, string: &mut Bytes) {
+        while string.has_remaining() {
+            self.consume(string.get_u8());
         }
     }
 
-    pub fn move_output(&mut self) -> String {
-        std::mem::replace(&mut self.output_buffer, String::with_capacity(1024))
+    pub fn move_output(&mut self) -> Bytes {
+        let bytes = std::mem::replace(&mut self.output_buffer,
+                                          BytesMut::with_capacity(1024));
+        bytes.freeze()
     }
 
-    pub fn consume(&mut self, chr: char) {
+    pub fn consume(&mut self, chr: u8) {
         match (self.state, chr) {
-            (_,                  'h') => { self.flush(); self.store(chr, State::HaveH) },
-            (State::HaveH,       't') => self.store(chr, State::HaveHT),
-            (State::HaveHT,      't') => self.store(chr, State::HaveHTT),
-            (State::HaveHTT,     'p') => self.store(chr, State::HaveHTTP),
-            (State::HaveHTTP,    's') => self.store(chr, State::HaveHTTPS),
-            (State::HaveHTTPS,   ':') => self.store(chr, State::HaveHTTPSC),
-            (State::HaveHTTPSC,  '/') => self.store(chr, State::HaveHTTPSCS),
-            (State::HaveHTTPSCS, '/') => self.output_http(),
+            (_,                  b'h') => { self.flush(); self.store(chr, State::HaveH) },
+            (State::HaveH,       b't') => self.store(chr, State::HaveHT),
+            (State::HaveHT,      b't') => self.store(chr, State::HaveHTT),
+            (State::HaveHTT,     b'p') => self.store(chr, State::HaveHTTP),
+            (State::HaveHTTP,    b's') => self.store(chr, State::HaveHTTPS),
+            (State::HaveHTTPS,   b':') => self.store(chr, State::HaveHTTPSC),
+            (State::HaveHTTPSC,  b'/') => self.store(chr, State::HaveHTTPSCS),
+            (State::HaveHTTPSCS, b'/') => self.output_http(),
             _ => { self.flush_and_output(chr) }
         }
     }
 
-    fn reset_buffer(&mut self) {
-        self.buffer = String::with_capacity(16);
+    fn reset_buffer(&mut self) -> Bytes {
+        let buf = std::mem::replace(&mut self.buffer,
+                                    BytesMut::with_capacity(16));
         self.state = State::NotInScheme;
+        buf.freeze()
     }
 
     fn flush(&mut self) {
-        self.output_buffer.push_str(&self.buffer);
-        self.reset_buffer();
+        let bytes = self.reset_buffer();
+        self.output_buffer.put(bytes);
     }
 
-    fn flush_and_output(&mut self, chr: char) {
+    fn flush_and_output(&mut self, chr: u8) {
         self.flush();
-        self.output_buffer.push(chr);
+        self.output_buffer.put_u8(chr);
     }
 
     // stores chr on the temporary buffer and updates state
-    fn store(&mut self, chr: char, next_state: State) {
-        self.buffer.push(chr);
+    fn store(&mut self, chr: u8, next_state: State) {
+        self.buffer.put_u8(chr);
         self.state = next_state;
     }
 
     // adds http:// to the output buffer and resets buffer & state
     fn output_http(&mut self) {
-        self.output_buffer.push_str("http://");
+        self.output_buffer.put(&b"http://"[..]);
         self.reset_buffer();
     }
 }
@@ -99,104 +96,104 @@ mod tests {
         #[test]
         fn state_n_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::with_capacity(5),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::with_capacity(5),
                 state: State::NotInScheme
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"");
             assert_eq!(rewriter.state, State::HaveH);
         }
 
         #[test]
         fn state_h_consume_t() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("h"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"h"[..]),
                 state: State::HaveH
             };
-            rewriter.consume('t');
-            assert_eq!(rewriter.buffer, "ht");
-            assert_eq!(rewriter.output_buffer, "");
+            rewriter.consume(b't');
+            assert_eq!(&rewriter.buffer[..], b"ht");
+            assert_eq!(&rewriter.output_buffer[..], b"");
             assert_eq!(rewriter.state, State::HaveHT);
         }
 
         #[test]
         fn state_ht_consume_t() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("ht"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"ht"[..]),
                 state: State::HaveHT
             };
-            rewriter.consume('t');
-            assert_eq!(rewriter.buffer, "htt");
-            assert_eq!(rewriter.output_buffer, "");
+            rewriter.consume(b't');
+            assert_eq!(&rewriter.buffer[..], b"htt");
+            assert_eq!(&rewriter.output_buffer[..], b"");
             assert_eq!(rewriter.state, State::HaveHTT);
         }
 
         #[test]
         fn state_htt_consume_p() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("htt"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"htt"[..]),
                 state: State::HaveHTT
             };
-            rewriter.consume('p');
-            assert_eq!(rewriter.buffer, "http");
-            assert_eq!(rewriter.output_buffer, "");
+            rewriter.consume(b'p');
+            assert_eq!(&rewriter.buffer[..], b"http");
+            assert_eq!(&rewriter.output_buffer[..], b"");
             assert_eq!(rewriter.state, State::HaveHTTP);
         }
 
         #[test]
         fn state_http_consume_s() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("http"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"http"[..]),
                 state: State::HaveHTTP
             };
-            rewriter.consume('s');
-            assert_eq!(rewriter.buffer, "https");
-            assert_eq!(rewriter.output_buffer, "");
+            rewriter.consume(b's');
+            assert_eq!(&rewriter.buffer[..], b"https");
+            assert_eq!(&rewriter.output_buffer[..], b"");
             assert_eq!(rewriter.state, State::HaveHTTPS);
         }
 
         #[test]
         fn state_https_consume_colon() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("https"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"https"[..]),
                 state: State::HaveHTTPS
             };
-            rewriter.consume(':');
-            assert_eq!(rewriter.buffer, "https:");
-            assert_eq!(rewriter.output_buffer, "");
+            rewriter.consume(b':');
+            assert_eq!(&rewriter.buffer[..], b"https:");
+            assert_eq!(&rewriter.output_buffer[..], b"");
             assert_eq!(rewriter.state, State::HaveHTTPSC);
         }
 
         #[test]
         fn state_httpsc_consume_slash() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("https:"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"https:"[..]),
                 state: State::HaveHTTPSC
             };
-            rewriter.consume('/');
-            assert_eq!(rewriter.buffer, "https:/");
-            assert_eq!(rewriter.output_buffer, "");
+            rewriter.consume(b'/');
+            assert_eq!(&rewriter.buffer[..], b"https:/");
+            assert_eq!(&rewriter.output_buffer[..], b"");
             assert_eq!(rewriter.state, State::HaveHTTPSCS);
         }
 
         #[test]
         fn state_httpscs_consume_slash() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("https:/"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"https:/"[..]),
                 state: State::HaveHTTPSCS
             };
-            rewriter.consume('/');
-            assert_eq!(rewriter.buffer, "");
-            assert_eq!(rewriter.output_buffer, "http://");
+            rewriter.consume(b'/');
+            assert_eq!(&rewriter.buffer[..], b"");
+            assert_eq!(&rewriter.output_buffer[..], b"http://");
             assert_eq!(rewriter.state, State::NotInScheme);
         }
 
@@ -205,91 +202,91 @@ mod tests {
         #[test]
         fn state_h_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("h"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"h"[..]),
                 state: State::NotInScheme
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "h");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"h");
             assert_eq!(rewriter.state, State::HaveH);
         }
 
         #[test]
         fn state_ht_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("ht"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"ht"[..]),
                 state: State::HaveHT
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "ht");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"ht");
             assert_eq!(rewriter.state, State::HaveH);
         }
 
         #[test]
         fn state_htt_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("htt"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"htt"[..]),
                 state: State::HaveHTT
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "htt");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"htt");
             assert_eq!(rewriter.state, State::HaveH);
         }
 
         #[test]
         fn state_http_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("http"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"http"[..]),
                 state: State::HaveHTTP
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "http");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"http");
             assert_eq!(rewriter.state, State::HaveH);
         }
 
         #[test]
         fn state_https_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("https"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"https"[..]),
                 state: State::HaveHTTPS
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "https");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"https");
             assert_eq!(rewriter.state, State::HaveH);
         }
 
         #[test]
         fn state_httpsc_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("https:"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"https:"[..]),
                 state: State::HaveHTTPSC
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "https:");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"https:");
             assert_eq!(rewriter.state, State::HaveH);
         }
 
         #[test]
         fn state_httpscs_consume_h() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(1),
-                buffer: String::from("https:/"),
+                output_buffer: BytesMut::with_capacity(1),
+                buffer: BytesMut::from(&b"https:/"[..]),
                 state: State::HaveHTTPSCS
             };
-            rewriter.consume('h');
-            assert_eq!(rewriter.buffer, "h");
-            assert_eq!(rewriter.output_buffer, "https:/");
+            rewriter.consume(b'h');
+            assert_eq!(&rewriter.buffer[..], b"h");
+            assert_eq!(&rewriter.output_buffer[..], b"https:/");
             assert_eq!(rewriter.state, State::HaveH);
         }
     }
@@ -301,46 +298,46 @@ mod tests {
         #[test]
         fn blank_consume_some_with_https_url() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(200),
-                buffer: String::with_capacity(16),
+                output_buffer: BytesMut::with_capacity(200),
+                buffer: BytesMut::with_capacity(16),
                 state: State::NotInScheme
             };
 
-            rewriter.consume_str("hello https://google.com");
+            rewriter.consume_str(&mut Bytes::from_static(b"hello https://google.com"));
 
-            assert_eq!(rewriter.output_buffer, "hello http://google.com");
-            assert_eq!(rewriter.buffer, "");
+            assert_eq!(&rewriter.output_buffer[..], b"hello http://google.com");
+            assert_eq!(&rewriter.buffer[..], b"");
             assert_eq!(rewriter.state, State::NotInScheme);
         }
 
         #[test]
         fn from_halfway_through_consume_remaining_https() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(200),
-                buffer: String::from("ht"),
+                output_buffer: BytesMut::with_capacity(200),
+                buffer: BytesMut::from(&b"ht"[..]),
                 state: State::HaveHT
             };
 
-            rewriter.consume_str("tps://google.com hello");
+            rewriter.consume_str(&mut Bytes::from_static(b"tps://google.com hello"));
 
-            assert_eq!(rewriter.output_buffer, "http://google.com hello");
-            assert_eq!(rewriter.buffer, "");
+            assert_eq!(&rewriter.output_buffer[..], b"http://google.com hello");
+            assert_eq!(&rewriter.buffer[..], b"");
             assert_eq!(rewriter.state, State::NotInScheme);
         }
 
         #[test]
         fn consume_a_few_chunks() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::with_capacity(200),
-                buffer: String::with_capacity(16),
+                output_buffer: BytesMut::with_capacity(200),
+                buffer: BytesMut::with_capacity(16),
                 state: State::NotInScheme
             };
 
-            rewriter.consume_str("hello https://google.com");
-            rewriter.consume_str("/goog http://website https:");
-            rewriter.consume_str("//example.com");
+            rewriter.consume_str(&mut Bytes::from_static(b"hello https://google.com"));
+            rewriter.consume_str(&mut Bytes::from_static(b"/goog http://website https:"));
+            rewriter.consume_str(&mut Bytes::from_static(b"//example.com"));
 
-            assert_eq!(rewriter.output_buffer, "hello http://google.com/goog http://website http://example.com");
+            assert_eq!(&rewriter.output_buffer[..], b"hello http://google.com/goog http://website http://example.com");
         }
     }
 
@@ -351,15 +348,15 @@ mod tests {
         #[test]
         fn returns_output() {
             let mut rewriter = HttpsUrlRewriter {
-                output_buffer: String::from("hello"),
-                buffer: String::with_capacity(1),
+                output_buffer: BytesMut::from(&b"hello"[..]),
+                buffer: BytesMut::with_capacity(1),
                 state: State::NotInScheme
             };
 
             let result = rewriter.move_output();
 
-            assert_eq!(result, "hello");
-            assert_eq!(rewriter.output_buffer, "");
+            assert_eq!(&result[..], b"hello");
+            assert_eq!(&rewriter.output_buffer[..], b"");
         }
     }
 }

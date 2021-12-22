@@ -1,5 +1,6 @@
 use crate::proxy_error::ProxyError;
 
+use bytes::{Bytes};
 use http::uri::{Uri, Authority};
 use hyper::{Request, Body, Response, Client};
 use http::header::HeaderValue;
@@ -77,7 +78,7 @@ impl<'a> TheInsecureProxy<'a> {
                     .insert("Content-Length",
                             HeaderValue::from_str(&new_body_str.len().to_string()).unwrap());
                 self.log_headers('<', &resp_parts.headers);
-                println!("< {}", new_body_str.replace("\n", "\n< "));
+                // println!("< {}", new_body_str.replace("\n", "\n< "));
                 resp_body = Body::from(new_body_str);
             } else {
                 println!("= not rewriting");
@@ -105,13 +106,11 @@ impl<'a> TheInsecureProxy<'a> {
         println!("< ");
     }
 
-    async fn rewrite_body(&self, resp_body: Body) -> Result<String, Box<dyn std::error::Error>> {
-        let bytes = hyper::body::to_bytes(resp_body).await?;
+    async fn rewrite_body(&self, resp_body: Body) -> Result<Bytes, Box<dyn std::error::Error>> {
+        let mut bytes = hyper::body::to_bytes(resp_body).await?;
         let mut rewriter = crate::https_url_rewriter::url_rewriter();
-        let body_string = std::str::from_utf8(bytes.as_ref())?;
-        rewriter.consume_str(&body_string);
-        let body_str = rewriter.move_output();
-        Ok(body_str)
+        rewriter.consume_str(&mut bytes);
+        Ok(rewriter.move_output())
     }
 
     fn httpsify(&mut self, req: Request<Body>) -> Result<Request<Body>, Box<dyn std::error::Error>> {
