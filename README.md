@@ -53,11 +53,3 @@ being accessed.
 
 The second rule is the one which rewrites all TCP traffic bound for any other IP
 to be bound for the proxy server.
-
-# Never-before Asked Questions
-
-## Why the rust rewrite?
-
-* I want to learn rust
-* The ruby version slurped up as much ram as the largest file you downloaded and
-  never seems to let go.
