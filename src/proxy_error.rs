@@ -8,9 +8,7 @@ pub struct ProxyError<'a> {
 
 impl<'a> ProxyError<'a> {
     pub fn new(message: &str) -> ProxyError {
-        ProxyError{
-            message: message
-        }
+        ProxyError { message }
     }
 }
 
@@ -22,6 +20,6 @@ impl<'a> fmt::Display for ProxyError<'a> {
 
 impl<'a> Error for ProxyError<'a> {
     fn description(&self) -> &str {
-        return "proxy error";
+        "proxy error"
     }
 }
