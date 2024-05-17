@@ -1,14 +1,11 @@
-name: Ruby
+name: tests
 
 on: [push,pull_request]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 3.0.2
-        bundler-cache: true
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@1.56
+    - run: cargo test --all-features
