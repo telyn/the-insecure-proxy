@@ -1,4 +1,4 @@
-FROM rust:1.56 as builder
+FROM rust:1.78 as builder
 WORKDIR /usr/src/the-insecure-proxy
 COPY Cargo.toml Cargo.lock .
 
