@@ -1,8 +1,8 @@
 use crate::proxy_error::ProxyError;
 
 use bytes::Bytes;
-use http::header::HeaderValue;
-use http::uri::{Authority, Uri};
+use hyper::http::{HeaderValue};
+use hyper::http::uri::{Authority, Uri};
 use hyper::client::HttpConnector;
 use hyper::service::Service;
 use hyper::{Body, Client, Request, Response};
@@ -123,7 +123,7 @@ impl<'a> TheInsecureProxy<'a> {
         let mut parts = req_parts.uri.clone().into_parts();
         let host = req_parts.headers.get("Host").unwrap().clone();
         parts.authority = Some(Authority::from_maybe_shared(host)?);
-        parts.scheme = Some(http::uri::Scheme::HTTPS);
+        parts.scheme = Some(hyper::http::uri::Scheme::HTTPS);
         let uri_replacement = Uri::from_parts(parts).expect("Uri failed to re-parse :S");
         req_parts.uri = uri_replacement;
 
