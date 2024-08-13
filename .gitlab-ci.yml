@@ -35,6 +35,7 @@ build-image:
     - echo /kaniko/executor --use-new-run -v debug --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"${DESTINATION_LATEST}
     - /kaniko/executor --use-new-run -v debug --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"${DESTINATION_LATEST}
 
+# todo: replace with argocd
 deploy:
   stage: deploy
   image: alpine/helm:3.7.2
@@ -44,9 +45,11 @@ deploy:
            --values=./chart/values.yaml \
            --namespace "${KUBE_NAMESPACE}" \
            --set "applicationName=${APP_NAME}" \
-           --set "image=${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}" \
+           --set "image=${CI_REGISTRY_IMAGE}:latest" \
            --set "imagePullSecret=image-pull-secret-${APP_NAME}" \
            --set "priorityClassName=fun-stuff"
+  needs:
+    - build-image
   environment:
     name: production
   rules:
