@@ -11,7 +11,8 @@ bench = false
 
 [dependencies]
 bytes = { version = "1" }
-hyper = { version = "0.14", features = ["http1", "client", "server", "runtime"] }
+hyper = { version = "0.14", features = ["http1", "client", "server", "runtime",
+"deprecated", "backports"] }
 tokio = { version = "1", features = ["full"] }
 hyper-tls = { version = "0.5" }
 http = { version = "1.1" }

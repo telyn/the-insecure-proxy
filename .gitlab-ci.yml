@@ -8,7 +8,7 @@ stages:
 
 build:
   stage: build
-  image: rust:1.56
+  image: rust:1.63
   script:
     - cargo fetch
     - cargo test --all-targets
