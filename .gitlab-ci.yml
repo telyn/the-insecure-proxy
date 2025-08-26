@@ -38,7 +38,7 @@ build-image:
 # todo: replace with argocd
 deploy:
   stage: deploy
-  image: alpine/helm:3.7.2
+  image: alpine/helm:3.17.1
   script:
     - >-
       helm upgrade "${APP_NAME}" ./chart --install --atomic \
