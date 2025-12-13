@@ -32,6 +32,26 @@ fn listen_addr() -> Result<net::SocketAddr, Box<dyn std::error::Error>> {
     Ok(net::SocketAddr::from((ip_addr, port)))
 }
 
+async fn accept_connection(stream: tokio::net::TcpStream) {
+    let io = TokioIo::new(stream);
+
+    tokio::task::spawn(async move {
+        if let Err(err) = http1::Builder::new()
+            .serve_connection(io, service_fn(the_insecure_proxy))
+            .await
+        {
+            eprintln!("Error serving connection: {:?}", err);
+        }
+    });
+}
+
+async fn graceful_shutdown() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("failed to install CTRL+C signal handler");
+    println!("\nReceived SIGINT, shutting down gracefully...");
+}
+
 #[tokio::main]
 async fn main() {
     let addr = listen_addr();
@@ -50,23 +70,22 @@ async fn main() {
     println!("Now listening!");
 
     loop {
-        let (stream, _) = match listener.accept().await {
-            Ok(conn) => conn,
-            Err(e) => {
-                eprintln!("accept error: {}", e);
-                continue;
+        tokio::select! {
+            result = listener.accept() => {
+                match result {
+                    Ok((stream, _)) => {
+                        accept_connection(stream).await;
+                    }
+                    Err(e) => {
+                        eprintln!("accept error: {}", e);
+                    }
+                }
             }
-        };
-
-        let io = TokioIo::new(stream);
-
-        tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new()
-                .serve_connection(io, service_fn(the_insecure_proxy))
-                .await
-            {
-                eprintln!("Error serving connection: {:?}", err);
+            _ = graceful_shutdown() => {
+                break;
             }
-        });
+        }
     }
+
+    println!("Server stopped.");
 }
