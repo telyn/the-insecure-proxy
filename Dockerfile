@@ -1,19 +1,19 @@
-FROM rust:1.70 as builder
+FROM rust:1.75 as builder
 WORKDIR /usr/src/the-insecure-proxy
-COPY Cargo.toml Cargo.lock .
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 
 RUN cargo fetch
 
-COPY src/* ./src/
+COPY src/ ./src/
 RUN cargo install -vv --path .
 
 
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 COPY --from=builder /usr/local/cargo/bin/the-insecure-proxy /usr/local/bin/the-insecure-proxy
 
 RUN apt-get update \
- && apt-get install -y libssl1.1 ca-certificates \
+ && apt-get install -y libssl3 ca-certificates \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir /the-insecure-proxy \
