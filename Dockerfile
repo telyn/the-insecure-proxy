@@ -8,7 +8,7 @@ COPY src/ ./src/
 RUN cargo install -vv --path .
 
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 COPY --from=builder /usr/local/cargo/bin/the-insecure-proxy /usr/local/bin/the-insecure-proxy
 
