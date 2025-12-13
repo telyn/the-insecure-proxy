@@ -8,3 +8,4 @@
 /dataSources.local.xml
 # CodeStream ignored files
 /codestream.xml
+/copilotDiffState.xml

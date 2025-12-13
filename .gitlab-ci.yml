@@ -2,9 +2,24 @@ variables:
   APP_NAME: the-insecure-proxy
 
 stages:
+  - test
   - build
   - build-image
   - deploy
+
+helm-check:
+  stage: test
+  image: alpine/helm:3.18.6
+  script:
+    - helm lint ./chart
+    - >-
+      helm template test-release ./chart
+      --values=./chart/values.yaml
+      --set "applicationName=${APP_NAME}"
+      --set "image=test:latest"
+      --set "imagePullSecret=test-secret"
+      --set "priorityClassName=test-priority"
+    - echo "Helm chart validation passed"
 
 build:
   stage: build
