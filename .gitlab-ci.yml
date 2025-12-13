@@ -50,6 +50,8 @@ build-image:
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [ "" ]
+  needs:
+    - build
   script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
@@ -60,7 +62,9 @@ build-image:
 # todo: replace with argocd
 deploy:
   stage: deploy
-  image: alpine/helm:3.19.0
+  image:
+    name: alpine/helm:3.19.0
+    entrypoint: [ "" ]
   script:
     - >-
       helm upgrade "${APP_NAME}" ./chart --install --atomic \
@@ -71,6 +75,7 @@ deploy:
            --set "imagePullSecret=image-pull-secret-${APP_NAME}" \
            --set "priorityClassName=fun-stuff"
   needs:
+    - helm-check
     - build-image
   environment:
     name: production
