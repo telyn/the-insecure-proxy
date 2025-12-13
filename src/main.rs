@@ -4,16 +4,12 @@ mod the_insecure_proxy;
 
 use the_insecure_proxy::the_insecure_proxy;
 
-use hyper::service::{make_service_fn, service_fn};
-use hyper::Server;
-use std::convert::Infallible;
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper_util::rt::TokioIo;
 use std::{env, net};
+use tokio::net::TcpListener;
 
-async fn shutdown_signal() {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to install CTRL+C signal handler");
-}
 
 fn listen_addr() -> Result<net::SocketAddr, Box<dyn std::error::Error>> {
     let default_address = "0.0.0.0";
@@ -39,26 +35,38 @@ fn listen_addr() -> Result<net::SocketAddr, Box<dyn std::error::Error>> {
 #[tokio::main]
 async fn main() {
     let addr = listen_addr();
-    match addr {
+    let addr = match addr {
         Ok(addr) => {
             println!("Booting server on {}", addr);
+            addr
         }
         Err(x) => {
             println!("{}", x);
             std::process::exit(1);
         }
-    }
+    };
 
-    let make_svc =
-        make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(the_insecure_proxy)) });
-
-    let server = Server::bind(&addr.unwrap())
-        .serve(make_svc)
-        .with_graceful_shutdown(shutdown_signal());
-
+    let listener = TcpListener::bind(addr).await.unwrap();
     println!("Now listening!");
 
-    if let Err(e) = server.await {
-        eprintln!("server error: {}", e);
+    loop {
+        let (stream, _) = match listener.accept().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                eprintln!("accept error: {}", e);
+                continue;
+            }
+        };
+
+        let io = TokioIo::new(stream);
+
+        tokio::task::spawn(async move {
+            if let Err(err) = http1::Builder::new()
+                .serve_connection(io, service_fn(the_insecure_proxy))
+                .await
+            {
+                eprintln!("Error serving connection: {:?}", err);
+            }
+        });
     }
 }

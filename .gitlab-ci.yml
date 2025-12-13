@@ -28,7 +28,7 @@ hadolint:
 
 build:
   stage: build
-  image: rust:1.75
+  image: rust:1.84
   script:
     - cargo fetch
     - cargo test --all-targets
