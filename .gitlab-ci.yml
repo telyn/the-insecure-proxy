@@ -9,7 +9,7 @@ stages:
 
 helm-check:
   stage: test
-  image: alpine/helm:3.18.6
+  image: alpine/helm:3.19.0
   script:
     - helm lint ./chart
     - >-
@@ -19,7 +19,6 @@ helm-check:
       --set "image=test:latest"
       --set "imagePullSecret=test-secret"
       --set "priorityClassName=test-priority"
-    - echo "Helm chart validation passed"
 
 hadolint:
   stage: test
