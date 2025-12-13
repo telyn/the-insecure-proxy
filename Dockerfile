@@ -12,8 +12,9 @@ FROM debian:trixie-slim
 
 COPY --from=builder /usr/local/cargo/bin/the-insecure-proxy /usr/local/bin/the-insecure-proxy
 
+# hadolint ignore=DL3008
 RUN apt-get update \
- && apt-get install -y libssl3 ca-certificates \
+ && apt-get install -y --no-install-recommends libssl3 ca-certificates \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir /the-insecure-proxy \

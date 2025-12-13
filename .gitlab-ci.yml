@@ -21,6 +21,12 @@ helm-check:
       --set "priorityClassName=test-priority"
     - echo "Helm chart validation passed"
 
+hadolint:
+  stage: test
+  image: hadolint/hadolint:latest-alpine
+  script:
+    - hadolint Dockerfile
+
 build:
   stage: build
   image: rust:1.75
