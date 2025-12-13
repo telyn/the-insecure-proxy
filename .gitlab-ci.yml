@@ -9,7 +9,9 @@ stages:
 
 helm-check:
   stage: test
-  image: alpine/helm:3.19.0
+  image:
+    name: alpine/helm:3.19.0
+    entrypoint: [ "" ]
   script:
     - helm lint ./chart
     - >-
