@@ -10,7 +10,7 @@ stages:
 helm-check:
   stage: test
   image:
-    name: alpine/helm:3.19.0
+    name: alpine/helm:3.20.0
     entrypoint: [ "" ]
   script:
     - helm lint ./chart
@@ -63,7 +63,7 @@ build-image:
 deploy:
   stage: deploy
   image:
-    name: alpine/helm:3.19.0
+    name: alpine/helm:3.20.0
     entrypoint: [ "" ]
   script:
     - >-
