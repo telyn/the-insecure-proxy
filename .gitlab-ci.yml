@@ -4,6 +4,7 @@ variables:
 stages:
   - test
   - build
+  - package-build
   - build-image
   - deploy
 
