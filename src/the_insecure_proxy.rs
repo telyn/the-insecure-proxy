@@ -149,6 +149,48 @@ impl TheInsecureProxy {
 mod tests {
     use super::*;
 
+    fn make_proxy() -> TheInsecureProxy {
+        TheInsecureProxy {
+            client: make_client(),
+            rewritten_mimes: Vec::from(DEFAULT_REWRITTEN_MIMES),
+        }
+    }
+
+    #[test]
+    fn should_rewrite_matches_text_html() {
+        assert!(make_proxy().should_rewrite("text/html"));
+    }
+
+    #[test]
+    fn should_rewrite_matches_text_html_with_charset_param() {
+        assert!(make_proxy().should_rewrite("text/html; charset=utf-8"));
+    }
+
+    #[test]
+    fn should_rewrite_matches_application_javascript() {
+        assert!(make_proxy().should_rewrite("application/javascript"));
+    }
+
+    #[test]
+    fn should_rewrite_matches_text_css() {
+        assert!(make_proxy().should_rewrite("text/css"));
+    }
+
+    #[test]
+    fn should_rewrite_does_not_match_image_jpeg() {
+        assert!(!make_proxy().should_rewrite("image/jpeg"));
+    }
+
+    #[test]
+    fn should_rewrite_does_not_match_application_octet_stream() {
+        assert!(!make_proxy().should_rewrite("application/octet-stream"));
+    }
+
+    #[test]
+    fn should_rewrite_is_case_insensitive() {
+        assert!(make_proxy().should_rewrite("TEXT/HTML"));
+    }
+
     #[test]
     fn httpsify_replaces_uri_scheme() {
         // Create a request with Incoming body type by using the service function approach
