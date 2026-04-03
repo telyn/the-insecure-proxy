@@ -7,6 +7,8 @@ stages:
   - package-build
   - package-test
   - publish
+  - acceptance
+  - production
   - build-image
   - deploy
 
