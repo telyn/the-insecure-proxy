@@ -5,6 +5,7 @@ stages:
   - test
   - build
   - package-build
+  - package-test
   - publish
   - build-image
   - deploy
