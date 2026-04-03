@@ -14,9 +14,9 @@ spec:
       labels:
         app: {{ .Values.applicationName }}
     spec:
-      {{ if .Values.priorityClassName }}
-      priorityClassName: fun-stuff
-      {{ end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       imagePullSecrets:
         - name: {{ .Values.imagePullSecret }}
       containers:

@@ -4,23 +4,18 @@ variables:
 stages:
   - test
   - build
+  - package-build
+  - package-test
+  - publish
+  - acceptance
+  - production
   - build-image
   - deploy
 
-helm-check:
-  stage: test
-  image:
-    name: alpine/helm:3.20.0
-    entrypoint: [ "" ]
-  script:
-    - helm lint ./chart
-    - >-
-      helm template test-release ./chart
-      --values=./chart/values.yaml
-      --set "applicationName=${APP_NAME}"
-      --set "image=test:latest"
-      --set "imagePullSecret=test-secret"
-      --set "priorityClassName=test-priority"
+include:
+  - component: $CI_SERVER_FQDN/to-be-continuous/helm/gitlab-ci-helm@9
+    inputs:
+      chart-dir: ./chart
 
 hadolint:
   stage: test
@@ -62,7 +57,7 @@ build-image:
 deploy:
   stage: deploy
   image:
-    name: alpine/helm:3.20.0
+    name: alpine/helm:4.1.1
     entrypoint: [ "" ]
   script:
     - >-
@@ -74,7 +69,7 @@ deploy:
            --set "imagePullSecret=image-pull-secret-${APP_NAME}" \
            --set "priorityClassName=fun-stuff"
   needs:
-    - helm-check
+    - helm-lint
     - build-image
   environment:
     name: production
