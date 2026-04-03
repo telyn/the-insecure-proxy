@@ -30,7 +30,7 @@ hadolint:
 
 build:
   stage: build
-  image: rust:1.84
+  image: rust:1.85
   script:
     - cargo fetch
     - cargo test --all-targets
