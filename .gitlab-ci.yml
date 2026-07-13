@@ -57,7 +57,7 @@ build-image:
 deploy:
   stage: deploy
   image:
-    name: alpine/helm:4.2.2
+    name: alpine/helm:4.2.3
     entrypoint: [ "" ]
   script:
     - >-
