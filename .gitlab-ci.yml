@@ -9,19 +9,24 @@ stages:
   - publish
   - acceptance
   - production
-  - build-image
   - deploy
 
 include:
   - component: $CI_SERVER_FQDN/to-be-continuous/helm/gitlab-ci-helm@9
     inputs:
       chart-dir: ./chart
+  - component: $CI_SERVER_FQDN/to-be-continuous/docker/gitlab-ci-docker@8
+    inputs:
+      build-tool: buildah
+      build-args: "--platform linux/amd64 --platform linux/arm64"
+      snapshot-image: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
+      release-image: "${CI_REGISTRY_IMAGE}:latest"
+      prod-publish-strategy: auto
+      hadolint-disabled: true
 
-hadolint:
-  stage: test
-  image: hadolint/hadolint:latest-alpine
-  script:
-    - hadolint Dockerfile
+docker-buildah-build:
+  tags:
+    - buildah
 
 build:
   stage: build
@@ -40,19 +45,6 @@ build:
       - target
       - .cargo
 
-build-image:
-  stage: build-image
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [ "" ]
-  needs:
-    - build
-  script:
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - if [ "${CI_COMMIT_BRANCH}" = "main" ]; then DESTINATION_LATEST=' --destination '"${CI_REGISTRY_IMAGE}:latest" ; fi
-    - /kaniko/executor --use-new-run -v warn --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"${DESTINATION_LATEST}
-
 # todo: replace with argocd
 deploy:
   stage: deploy
@@ -70,7 +62,7 @@ deploy:
            --set "priorityClassName=fun-stuff"
   needs:
     - helm-lint
-    - build-image
+    - docker-publish
   environment:
     name: production
   rules:
