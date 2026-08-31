@@ -22,7 +22,8 @@ include:
       snapshot-image: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
       release-image: "${CI_REGISTRY_IMAGE}:latest"
       prod-publish-strategy: auto
-      hadolint-disabled: true
+      trivy-disabled: true
+      sbom-disabled: true
 
 docker-buildah-build:
   tags:
