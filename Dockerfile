@@ -18,10 +18,10 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir /the-insecure-proxy \
- && useradd the-insecure-proxy \
+ && useradd --uid 10001 the-insecure-proxy \
  && chown -R the-insecure-proxy /the-insecure-proxy
 
 WORKDIR /the-insecure-proxy
-USER the-insecure-proxy
+USER 10001
 
 CMD [ "/usr/local/bin/the-insecure-proxy" ]
