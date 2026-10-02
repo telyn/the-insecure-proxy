@@ -31,7 +31,7 @@ docker-buildah-build:
 
 build:
   stage: build
-  image: rust:1.98
+  image: rust:1.99
   script:
     - cargo fetch
     - cargo test --all-targets
