@@ -1,16 +1,7 @@
-FROM rust:1.98 as builder
-WORKDIR /usr/src/the-insecure-proxy
-COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
-
-RUN cargo fetch
-
-COPY src/ ./src/
-RUN cargo install -vv --path .
-
-
 FROM debian:trixie-slim
 
-COPY --from=builder /usr/local/cargo/bin/the-insecure-proxy /usr/local/bin/the-insecure-proxy
+ARG TARGETARCH
+COPY dist/${TARGETARCH}/the-insecure-proxy /usr/local/bin/the-insecure-proxy
 
 # hadolint ignore=DL3008
 RUN apt-get update \

@@ -32,16 +32,24 @@ docker-buildah-build:
 build:
   stage: build
   image: rust:1.98
+  parallel:
+    matrix:
+      - ARCH: [amd64, arm64]
+  tags:
+    - $ARCH
   script:
     - cargo fetch
     - cargo test --all-targets
     - cargo build --release
+    - mkdir -p "dist/${ARCH}"
+    - cp target/release/the-insecure-proxy "dist/${ARCH}/"
   variables:
     CARGO_HOME: $CI_PROJECT_DIR/.cargo
   artifacts:
     paths:
-      - target/release/the-insecure-proxy
+      - dist/
   cache:
+    key: "build-${ARCH}"
     paths:
       - target
       - .cargo
