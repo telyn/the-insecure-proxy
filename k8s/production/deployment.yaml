@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: the-insecure-proxy
+  annotations:
+    # single replica, stateless hobby proxy
+    kube-score/ignore: deployment-replicas,pod-networkpolicy,container-resources,container-ephemeral-storage-request-and-limit,pod-probes,deployment-has-poddisruptionbudget,deployment-has-host-podantiaffinity
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: the-insecure-proxy
+  template:
+    metadata:
+      labels:
+        app: the-insecure-proxy
+    spec:
+      priorityClassName: fun-stuff
+      imagePullSecrets:
+        - name: image-pull-secret-the-insecure-proxy
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+      containers:
+        - name: the-insecure-proxy
+          # t-b-c does not substitute arbitrary CI variables, so the image is hardcoded
+          image: docker.telynz.uk/telyn/the-insecure-proxy:latest
+          imagePullPolicy: Always
+          env:
+            - name: PORT
+              value: "5000"
+            - name: BIND_ADDRESS
+              value: "0.0.0.0"
+          ports:
+            - name: http
+              containerPort: 5000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
