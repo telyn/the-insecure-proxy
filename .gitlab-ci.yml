@@ -11,6 +11,7 @@ stages:
   - publish
   - acceptance
   - production
+  - deploy
 
 include:
   - component: $CI_SERVER_FQDN/to-be-continuous/kubernetes/gitlab-ci-k8s@9
