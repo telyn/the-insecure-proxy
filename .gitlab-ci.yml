@@ -1,5 +1,6 @@
 variables:
-  APP_NAME: the-insecure-proxy
+  K8S_KUSTOMIZE_ENABLED: "true"
+  KUBE_CONTEXT: telyn/cluster-management:home
 
 stages:
   - test
@@ -12,9 +13,12 @@ stages:
   - deploy
 
 include:
-  - component: $CI_SERVER_FQDN/to-be-continuous/helm/gitlab-ci-helm@9
+  - component: $CI_SERVER_FQDN/to-be-continuous/kubernetes/gitlab-ci-k8s@9
     inputs:
-      chart-dir: ./chart
+      base-app-name: the-insecure-proxy
+      scripts-dir: k8s
+      prod-space: the-insecure-proxy
+      prod-deploy-strategy: auto
   - component: $CI_SERVER_FQDN/to-be-continuous/docker/gitlab-ci-docker@8
     inputs:
       build-tool: buildah
@@ -53,27 +57,3 @@ build:
     paths:
       - target
       - .cargo
-
-# todo: replace with argocd
-deploy:
-  stage: deploy
-  image:
-    name: alpine/helm:4.3.0
-    entrypoint: [ "" ]
-  script:
-    - >-
-      helm upgrade "${APP_NAME}" ./chart --install --atomic \
-           --values=./chart/values.yaml \
-           --namespace "${KUBE_NAMESPACE}" \
-           --set "applicationName=${APP_NAME}" \
-           --set "image=${CI_REGISTRY_IMAGE}:latest" \
-           --set "imagePullSecret=image-pull-secret-${APP_NAME}" \
-           --set "priorityClassName=fun-stuff"
-  needs:
-    - helm-lint
-    - docker-publish
-  environment:
-    name: production
-  rules:
-    - if: $CI_COMMIT_BRANCH == 'main'
-      when: always
