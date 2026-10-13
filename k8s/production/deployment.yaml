@@ -3,8 +3,8 @@ kind: Deployment
 metadata:
   name: the-insecure-proxy
   annotations:
-    # single replica, stateless hobby proxy
-    kube-score/ignore: deployment-replicas,pod-networkpolicy,container-resources,container-ephemeral-storage-request-and-limit,pod-probes,deployment-has-poddisruptionbudget,deployment-has-host-podantiaffinity
+    # single replica, stateless hobby proxy; image is always :latest with imagePullPolicy: Always
+    kube-score/ignore: container-image-tag,deployment-replicas,pod-networkpolicy,container-resources,container-ephemeral-storage-request-and-limit,pod-probes,deployment-has-poddisruptionbudget,deployment-has-host-podantiaffinity
 spec:
   replicas: 1
   selector:
