@@ -1,6 +1,5 @@
 variables:
   K8S_KUSTOMIZE_ENABLED: "true"
-  K8S_PROD_KUSTOMIZE_DIR: k8s/production
   KUBE_CONTEXT: telyn/cluster-management:home
 
 stages:
@@ -17,6 +16,7 @@ include:
   - component: $CI_SERVER_FQDN/to-be-continuous/kubernetes/gitlab-ci-k8s@9
     inputs:
       base-app-name: the-insecure-proxy
+      scripts-dir: k8s
       prod-space: the-insecure-proxy
       prod-deploy-strategy: auto
   - component: $CI_SERVER_FQDN/to-be-continuous/docker/gitlab-ci-docker@8
