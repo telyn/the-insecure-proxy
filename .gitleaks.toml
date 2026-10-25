@@ -1,0 +1,4 @@
+title = "the-insecure-proxy gitleaks config"
+
+[extend]
+useDefault = true
