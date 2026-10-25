@@ -13,6 +13,9 @@ stages:
   - deploy
 
 include:
+  - component: $CI_SERVER_FQDN/to-be-continuous/gitleaks/gitlab-ci-gitleaks@2.11.0
+    inputs:
+      image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/zricethezav/gitleaks:v8.30.1
   - component: $CI_SERVER_FQDN/to-be-continuous/kubernetes/gitlab-ci-k8s@9
     inputs:
       base-app-name: the-insecure-proxy
