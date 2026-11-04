@@ -2,9 +2,5 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>telyn/renovate"
-  ],
-  "automerge": true,
-  "assignees": [
-    "group_345_bot_4b0b23906751431e83bf6283922ce22d"
   ]
 }
