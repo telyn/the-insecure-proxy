@@ -39,7 +39,7 @@ docker-buildah-build:
 
 build:
   stage: build
-  image: rust:1.99
+  image: rust:1.100
   parallel:
     matrix:
       - ARCH: [amd64, arm64]
